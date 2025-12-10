@@ -44,7 +44,7 @@ public sealed class ProtocolSchema<TProtocol> : IProtocolSchema<TProtocol>
     {
         if (Properties.TryGetValue(fieldName, out var info))
         {
-            return info.ByteAddress;
+            return info.Address;
         }
 
         throw new ArgumentException($"找不到字段 {fieldName} 的地址映射");
@@ -87,13 +87,13 @@ public sealed class ProtocolSchema<TProtocol> : IProtocolSchema<TProtocol>
 
             var fieldType = propertyInfo.PropertyType;
             var size = GetFieldSize(fieldType);
-            var byteAddress = attribute.ByteAddress;
+            var address = attribute.Address;
 
             var fieldInfo = new ProtocolFieldInfo
             {
                 Name = propertyInfo.Name,
                 FieldType = fieldType,
-                ByteAddress = byteAddress,
+                Address = address,
                 Size = size
             };
 
@@ -101,11 +101,11 @@ public sealed class ProtocolSchema<TProtocol> : IProtocolSchema<TProtocol>
 
             if (fieldType == typeof(bool))
             {
-                booleanMapping[propertyInfo.Name] = byteAddress;
+                booleanMapping[propertyInfo.Name] = address;
             }
 
-            startAddress = Math.Min(startAddress, byteAddress);
-            maxEndAddress = Math.Max(maxEndAddress, byteAddress + size);
+            startAddress = Math.Min(startAddress, address);
+            maxEndAddress = Math.Max(maxEndAddress, address + size);
         }
 
         if (startAddress == int.MaxValue)

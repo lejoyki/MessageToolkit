@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -10,9 +9,9 @@ using MessageToolkit.Models;
 namespace MessageToolkit;
 
 /// <summary>
-/// 协议编解码器实现
+/// Modbus 协议编解码器 - 用于字节数据的编解码
 /// </summary>
-public sealed class ProtocolCodec<TProtocol> : IProtocolCodec<TProtocol>
+public sealed class ProtocolCodec<TProtocol> : IProtocolCodec<TProtocol, byte>
     where TProtocol : struct
 {
     public IProtocolSchema<TProtocol> Schema { get; }
@@ -40,7 +39,7 @@ public sealed class ProtocolCodec<TProtocol> : IProtocolCodec<TProtocol>
             var value = property.GetValue(protocol)
                         ?? throw new InvalidOperationException($"属性 {fieldInfo.Name} 的值为 null");
             var bytes = EncodeValueInternal(value, fieldInfo.FieldType);
-            var offset = fieldInfo.ByteAddress - Schema.StartAddress;
+            var offset = fieldInfo.Address - Schema.StartAddress;
             bytes.CopyTo(buffer.AsSpan(offset));
         }
 
@@ -60,7 +59,7 @@ public sealed class ProtocolCodec<TProtocol> : IProtocolCodec<TProtocol>
 
         foreach (var (fieldInfo, property) in _orderedProperties)
         {
-            var offset = fieldInfo.ByteAddress - Schema.StartAddress;
+            var offset = fieldInfo.Address - Schema.StartAddress;
             var valueBytes = data.Slice(offset, fieldInfo.Size);
             var value = DecodeValueInternal(valueBytes, fieldInfo.FieldType);
             if (property.SetMethod == null)
@@ -118,7 +117,7 @@ public sealed class ProtocolCodec<TProtocol> : IProtocolCodec<TProtocol>
                     continue;
                 }
 
-                result[Info.ByteAddress] = b;
+                result[Info.Address] = b;
             }
         }
 
@@ -157,7 +156,7 @@ public sealed class ProtocolCodec<TProtocol> : IProtocolCodec<TProtocol>
 
     private (ProtocolFieldInfo Info, PropertyInfo Property)[] BuildPropertyAccessors(IEnumerable<ProtocolFieldInfo> fields)
     {
-        var orderedInfos = fields.OrderBy(f => f.ByteAddress).ToArray();
+        var orderedInfos = fields.OrderBy(f => f.Address).ToArray();
         var result = new (ProtocolFieldInfo Info, PropertyInfo Property)[orderedInfos.Length];
 
         for (var i = 0; i < orderedInfos.Length; i++)

@@ -9,22 +9,22 @@ namespace MessageToolkit.Abstractions;
 public interface IProtocolSchema<TProtocol> where TProtocol : struct
 {
     /// <summary>
-    /// 协议起始字节地址
+    /// 协议起始地址
     /// </summary>
     int StartAddress { get; }
 
     /// <summary>
-    /// 协议起始寄存器地址
+    /// 协议起始寄存器地址（StartAddress / 2）
     /// </summary>
     int StartRegisterAddress => StartAddress / 2;
 
     /// <summary>
-    /// 协议总大小（字节）
+    /// 协议总大小（元素数量）
     /// </summary>
     int TotalSize { get; }
 
     /// <summary>
-    /// 寄存器数量
+    /// 寄存器数量（TotalSize / 2）
     /// </summary>
     int RegisterCount => TotalSize / 2;
 
@@ -45,7 +45,7 @@ public interface IProtocolSchema<TProtocol> where TProtocol : struct
 
     /// <summary>
     /// 布尔属性地址映射（仅包含类型为 bool 的字段/属性）
-    /// 键为属性名，值为字节地址
+    /// 键为属性名，值为地址
     /// </summary>
     IReadOnlyDictionary<string, ushort> BooleanProperties { get; }
 

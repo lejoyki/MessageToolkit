@@ -6,7 +6,7 @@ using MobusTest;
 
 var services = new ServiceCollection()
     .AddMessageToolkit()
-    .AddProtocol<DeviceProtocol>(
+    .AddModbusProtocol<DeviceProtocol>(
         booleanType: BooleanRepresentation.Int16,
         endianness: Endianness.BigEndian)
     .AddSingleton<AppRunner>();

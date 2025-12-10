@@ -5,26 +5,30 @@ using MessageToolkit.Models;
 namespace MessageToolkit;
 
 /// <summary>
-/// 批量帧构建器实现
+/// Modbus 数据映射 - 用于批量构建字节帧
 /// </summary>
-internal sealed class BatchFrameBuilder<TProtocol> : IBatchFrameBuilder<TProtocol>
+internal sealed class ModbusBatchFrameBuilder<TProtocol> : IDataMapping<TProtocol, byte>
     where TProtocol : struct
 {
-    private readonly IFrameBuilder<TProtocol> _frameBuilder;
+    private readonly IFrameBuilder<TProtocol, byte> _frameBuilder;
     private readonly List<WriteEntry> _pendingWrites;
 
-    // 预分配容量，避免频繁扩容
     private const int DefaultCapacity = 16;
 
     public int Count => _pendingWrites.Count;
 
-    public BatchFrameBuilder(IFrameBuilder<TProtocol> frameBuilder)
+    public ModbusBatchFrameBuilder(IFrameBuilder<TProtocol, byte> frameBuilder)
     {
         _frameBuilder = frameBuilder;
         _pendingWrites = new List<WriteEntry>(DefaultCapacity);
     }
 
-    public IBatchFrameBuilder<TProtocol> Write<TValue>(
+    public void AddData(int address, byte data)
+    {
+        _pendingWrites.Add(new WriteEntry((ushort)address, [data]));
+    }
+
+    public IDataMapping<TProtocol, byte> Property<TValue>(
         Expression<Func<TProtocol, TValue>> fieldSelector,
         TValue value) where TValue : unmanaged
     {
@@ -34,58 +38,53 @@ internal sealed class BatchFrameBuilder<TProtocol> : IBatchFrameBuilder<TProtoco
         return this;
     }
 
-    public IBatchFrameBuilder<TProtocol> Write<TValue>(ushort address, TValue value) where TValue : unmanaged
+    public IDataMapping<TProtocol, byte> Property<TValue>(ushort address, TValue value) where TValue : unmanaged
     {
         var data = _frameBuilder.Codec.EncodeValue(value);
         _pendingWrites.Add(new WriteEntry(address, data));
         return this;
     }
 
-    public IBatchFrameBuilder<TProtocol> WriteRaw(ushort address, ReadOnlySpan<byte> data)
+    public IValueSetter<TProtocol, byte> Property<TValue>(
+        Expression<Func<TProtocol, TValue>> propertyExpression)
     {
-        _pendingWrites.Add(new WriteEntry(address, data.ToArray()));
-        return this;
+        var address = _frameBuilder.Schema.GetAddress(propertyExpression);
+        return new ByteValueSetter<TProtocol>(this, (ushort)address, _frameBuilder.Codec);
     }
 
-    public WriteFrameCollection Build()
+    public IValueSetter<TProtocol, byte> Property(int address)
     {
-        var collection = new WriteFrameCollection();
+        return new ByteValueSetter<TProtocol>(this, (ushort)address, _frameBuilder.Codec);
+    }
 
+    public IEnumerable<IWriteFrame<byte>> Build()
+    {
         foreach (var entry in _pendingWrites)
         {
-            collection.Add(new ModbusWriteFrame(
-                entry.Address,
-                entry.Data));
+            yield return new ModbusWriteFrame(entry.Address, entry.Data);
         }
-
-        return collection;
     }
 
-    public WriteFrameCollection BuildOptimized()
+    public IEnumerable<IWriteFrame<byte>> BuildOptimized()
     {
         if (_pendingWrites.Count == 0)
         {
-            return new WriteFrameCollection();
+            yield break;
         }
 
-        // 使用 Span 排序避免分配
         var entries = _pendingWrites.ToArray();
         Array.Sort(entries, static (a, b) => a.Address.CompareTo(b.Address));
 
-        var collection = new WriteFrameCollection();
         var index = 0;
-
         while (index < entries.Length)
         {
             var startEntry = entries[index];
             var startAddr = startEntry.Address;
 
-            // 计算需要合并的数据总长度
             var totalLength = startEntry.Data.Length;
             var endAddr = startAddr + startEntry.Data.Length;
             var mergeCount = 1;
 
-            // 查找可以合并的连续条目
             for (var i = index + 1; i < entries.Length; i++)
             {
                 var nextEntry = entries[i];
@@ -97,16 +96,12 @@ internal sealed class BatchFrameBuilder<TProtocol> : IBatchFrameBuilder<TProtoco
                 mergeCount++;
             }
 
-            // 如果只有一个条目，直接使用原数据
             if (mergeCount == 1)
             {
-                collection.Add(new ModbusWriteFrame(
-                    startAddr,
-                    startEntry.Data));
+                yield return new ModbusWriteFrame(startAddr, startEntry.Data);
             }
             else
             {
-                // 合并多个条目的数据
                 var mergedData = new byte[totalLength];
                 var offset = 0;
 
@@ -117,15 +112,11 @@ internal sealed class BatchFrameBuilder<TProtocol> : IBatchFrameBuilder<TProtoco
                     offset += data.Length;
                 }
 
-                collection.Add(new ModbusWriteFrame(
-                    startAddr,
-                    mergedData));
+                yield return new ModbusWriteFrame(startAddr, mergedData);
             }
 
             index += mergeCount;
         }
-
-        return collection;
     }
 
     public void Clear()
@@ -133,18 +124,35 @@ internal sealed class BatchFrameBuilder<TProtocol> : IBatchFrameBuilder<TProtoco
         _pendingWrites.Clear();
     }
 
-    /// <summary>
-    /// 写入条目 - 使用 readonly struct 减少内存分配
-    /// </summary>
-    private readonly struct WriteEntry
+    private readonly struct WriteEntry(ushort address, byte[] data)
     {
-        public readonly ushort Address;
-        public readonly byte[] Data;
+        public ushort Address { get; } = address;
+        public byte[] Data { get; } = data;
+    }
+}
 
-        public WriteEntry(ushort address, byte[] data)
+/// <summary>
+/// 字节值设置器 - 用于 Fluent API
+/// </summary>
+internal sealed class ByteValueSetter<TProtocol>(
+    IDataMapping<TProtocol, byte> mapping,
+    ushort address,
+    IProtocolCodec<TProtocol, byte> codec) : IValueSetter<TProtocol, byte>
+    where TProtocol : struct
+{
+    public IDataMapping<TProtocol, byte> Value(byte value)
+    {
+        mapping.AddData(address, value);
+        return mapping;
+    }
+
+    public IDataMapping<TProtocol, byte> Value<TValue>(TValue value) where TValue : unmanaged
+    {
+        var data = codec.EncodeValue(value);
+        foreach (var b in data)
         {
-            Address = address;
-            Data = data;
+            mapping.AddData(address, b);
         }
+        return mapping;
     }
 }

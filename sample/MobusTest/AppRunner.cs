@@ -8,7 +8,7 @@ namespace MobusTest;
 
 public sealed class AppRunner : IDisposable
 {
-    private readonly IFrameBuilder<DeviceProtocol> _builder;
+    private readonly IFrameBuilder<DeviceProtocol, byte> _builder;
     private readonly ModbusTcpClient _client = new();
     private TargetConfig _config = new("127.0.0.1", 502, 1);
     private DeviceProtocol _current = new()
@@ -19,7 +19,7 @@ public sealed class AppRunner : IDisposable
         Status = 1
     };
 
-    public AppRunner(IFrameBuilder<DeviceProtocol> builder)
+    public AppRunner(IFrameBuilder<DeviceProtocol, byte> builder)
     {
         _builder = builder;
     }
@@ -71,7 +71,7 @@ public sealed class AppRunner : IDisposable
 
     private void WriteFull(DeviceProtocol protocol)
     {
-        var frame = _builder.BuildWriteFrame(protocol);
+        var frame = (ModbusWriteFrame)_builder.BuildWriteFrame(protocol);
         _client.WriteMultipleRegisters(_config.UnitId, frame.RegisterAddress, frame.Data.ToArray());
         Console.WriteLine($"已写入: 起始寄存器 {frame.RegisterAddress}，寄存器数 {frame.RegisterCount}");
     }
@@ -107,7 +107,7 @@ public sealed class AppRunner : IDisposable
 
     private void WriteValue<T>(Expression<Func<DeviceProtocol, T>> selector, T value) where T : unmanaged
     {
-        var frame = _builder.BuildWriteFrame(selector, value);
+        var frame = (ModbusWriteFrame)_builder.BuildWriteFrame(selector, value);
         _client.WriteMultipleRegisters(_config.UnitId, frame.RegisterAddress, frame.Data.ToArray());
         Console.WriteLine($"已写入字段，起始寄存器 {frame.RegisterAddress}，寄存器数 {frame.RegisterCount}");
     }
@@ -140,7 +140,7 @@ public sealed class AppRunner : IDisposable
     private void ReadField<T>(Expression<Func<DeviceProtocol, T>> selector, string label) where T : unmanaged
     {
         // 使用新的 BuildReadRequest 方法，直接获取寄存器数量
-        var request = _builder.BuildReadRequest(selector);
+        var request = (ModbusReadRequest)_builder.BuildReadRequest(selector);
 
         if (request.RegisterCount == 0)
         {
@@ -156,7 +156,7 @@ public sealed class AppRunner : IDisposable
     private void ReadAll()
     {
         // 使用新的 BuildReadRequest 方法，直接获取寄存器数量
-        var request = _builder.BuildReadRequest();
+        var request = (ModbusReadRequest)_builder.BuildReadRequest();
 
         var raw = _client.ReadHoldingRegisters(_config.UnitId, request.RegisterAddress, request.RegisterCount);
         var decoded = _builder.Codec.Decode(raw);

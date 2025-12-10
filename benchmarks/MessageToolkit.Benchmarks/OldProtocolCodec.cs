@@ -10,7 +10,7 @@ namespace MessageToolkit.Benchmarks;
 /// <summary>
 /// 优化前的协议编解码器实现（使用反射）
 /// </summary>
-public sealed class OldProtocolCodec<TProtocol> : IProtocolCodec<TProtocol>
+public sealed class OldProtocolCodec<TProtocol> : IProtocolCodec<TProtocol, byte>
     where TProtocol : struct
 {
     public IProtocolSchema<TProtocol> Schema { get; }

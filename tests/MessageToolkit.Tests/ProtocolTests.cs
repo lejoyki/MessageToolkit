@@ -9,8 +9,8 @@ namespace MessageToolkit.Tests;
 public sealed class ProtocolTests
 {
     private readonly IProtocolSchema<DemoProtocol> _schema;
-    private readonly IProtocolCodec<DemoProtocol> _codec;
-    private readonly IFrameBuilder<DemoProtocol> _builder;
+    private readonly IProtocolCodec<DemoProtocol, byte> _codec;
+    private readonly IFrameBuilder<DemoProtocol, byte> _builder;
 
     public ProtocolTests()
     {
@@ -67,7 +67,9 @@ public sealed class ProtocolTests
             Status = 3
         };
 
-        var map = _codec.ExtractBooleanValues(protocol);
+        // ExtractBooleanValues is a concrete class helper, cast to access it
+        var concreteCodec = (ProtocolCodec<DemoProtocol>)_codec;
+        var map = concreteCodec.ExtractBooleanValues(protocol);
         Assert.Single(map);
         Assert.True(map.ContainsKey(108));
         Assert.True(map[108]);
@@ -79,81 +81,87 @@ public sealed class ProtocolTests
         var protocol = new DemoProtocol { Speed = 100, Temperature = 10.5f, IsRunning = false, Status = -1 };
 
         var writeFrame = _builder.BuildWriteFrame(protocol);
-        Assert.Equal((ushort)_schema.StartAddress, writeFrame.StartAddress);
-        Assert.Equal(_schema.TotalSize, writeFrame.DataLength);
-        Assert.Equal((ushort)(_schema.TotalSize / 2), writeFrame.RegisterCount);
+        var modbusFrame = (ModbusWriteFrame)writeFrame;
+        Assert.Equal((ushort)_schema.StartAddress, modbusFrame.StartAddress);
+        Assert.Equal(_schema.TotalSize, modbusFrame.DataLength);
+        Assert.Equal((ushort)(_schema.TotalSize / 2), modbusFrame.RegisterCount);
     }
 
     [Fact]
     public void FrameBuilder_Should_Build_ReadRequest_For_Protocol()
     {
         var readAll = _builder.BuildReadRequest();
+        var modbusRequest = (ModbusReadRequest)readAll;
 
-        Assert.Equal((ushort)_schema.StartAddress, readAll.StartAddress);
-        Assert.Equal((ushort)_schema.RegisterCount, readAll.RegisterCount);
-        Assert.Equal(_schema.TotalSize, readAll.ByteCount);
+        Assert.Equal((ushort)_schema.StartAddress, modbusRequest.StartAddress);
+        Assert.Equal((ushort)_schema.RegisterCount, modbusRequest.RegisterCount);
+        Assert.Equal(_schema.TotalSize, modbusRequest.ByteCount);
     }
 
     [Fact]
     public void FrameBuilder_Should_Build_ReadRequest_For_Field()
     {
         var readField = _builder.BuildReadRequest(p => p.Temperature);
+        var modbusRequest = (ModbusReadRequest)readField;
 
-        Assert.Equal((ushort)104, readField.StartAddress);
-        Assert.Equal((ushort)2, readField.RegisterCount); // float = 4 bytes = 2 registers
-        Assert.Equal(4, readField.ByteCount);
+        Assert.Equal((ushort)104, modbusRequest.StartAddress);
+        Assert.Equal((ushort)2, modbusRequest.RegisterCount); // float = 4 bytes = 2 registers
+        Assert.Equal(4, modbusRequest.ByteCount);
     }
 
     [Fact]
     public void FrameBuilder_Should_Build_WriteFrame_For_Field()
     {
         var writeFrame = _builder.BuildWriteFrame(p => p.Speed, 1500);
+        var modbusFrame = (ModbusWriteFrame)writeFrame;
 
-        Assert.Equal((ushort)100, writeFrame.StartAddress);
-        Assert.Equal(4, writeFrame.DataLength); // int = 4 bytes
-        Assert.Equal((ushort)2, writeFrame.RegisterCount);
+        Assert.Equal((ushort)100, modbusFrame.StartAddress);
+        Assert.Equal(4, modbusFrame.DataLength); // int = 4 bytes
+        Assert.Equal((ushort)2, modbusFrame.RegisterCount);
     }
 
     [Fact]
     public void BatchBuilder_Should_Combine_Contiguous_Addresses()
     {
-        using var frames = _builder.CreateBatchBuilder()
+        var frames = _builder.CreateDataMapping()
             .Write(p => p.Speed, 10)
             .Write(p => p.Temperature, 20.5f)
             .Write(p => p.IsRunning, true)
             .Write(p => p.Status, (short)2)  // 显式转换为 short 以确保类型正确
-            .BuildOptimized();
+            .BuildOptimized()
+            .ToArray();
 
         Assert.Single(frames);
-        var frame = frames.Frames[0];
-        Assert.Equal((ushort)100, frame.StartAddress);
-        Assert.Equal(12, frame.DataLength); // 4 + 4 + 2 + 2
+        var modbusFrame = (ModbusWriteFrame)frames[0];
+        Assert.Equal((ushort)100, modbusFrame.StartAddress);
+        Assert.Equal(12, modbusFrame.DataLength); // 4 + 4 + 2 + 2
     }
 
     [Fact]
     public void BatchBuilder_Should_Not_Combine_NonContiguous_Addresses()
     {
-        using var frames = _builder.CreateBatchBuilder()
+        var frames = _builder.CreateDataMapping()
             .Write(p => p.Speed, 10)          // 地址 100, 4 bytes
             .Write(p => p.IsRunning, true)    // 地址 108, 2 bytes (跳过 Temperature)
-            .BuildOptimized();
+            .BuildOptimized()
+            .ToArray();
 
-        Assert.Equal(2, frames.Count);
-        Assert.Equal((ushort)100, frames[0].StartAddress);
-        Assert.Equal((ushort)108, frames[1].StartAddress);
+        Assert.Equal(2, frames.Length);
+        Assert.Equal(100, frames[0].StartAddress);
+        Assert.Equal(108, frames[1].StartAddress);
     }
 
     [Fact]
     public void BatchBuilder_Clear_Should_Reset()
     {
-        var builder = _builder.CreateBatchBuilder();
+        var builder = _builder.CreateDataMapping();
         builder.Write(p => p.Speed, 10);
         Assert.Equal(1, builder.Count);
 
         builder.Clear();
         Assert.Equal(0, builder.Count);
 
-        using var frames = builder.Build();
+        var frames = builder.Build().ToArray();
         Assert.Empty(frames);
     }
 

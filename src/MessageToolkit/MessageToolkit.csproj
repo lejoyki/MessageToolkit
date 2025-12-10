@@ -32,7 +32,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="readme.md" Pack="True" PackagePath="\" />
+    <None Include="..\..\readme.md" Pack="True" PackagePath="\" />
     <None Include="..\..\doc\nuget\icon.png" Pack="True" PackagePath="\" />
   </ItemGroup>
 

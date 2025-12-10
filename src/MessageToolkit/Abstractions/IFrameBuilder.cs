@@ -1,12 +1,14 @@
 using System.Linq.Expressions;
-using MessageToolkit.Models;
 
 namespace MessageToolkit.Abstractions;
 
 /// <summary>
-/// Modbus 帧构建器接口
+/// 泛型帧构建器接口
 /// </summary>
-public interface IFrameBuilder<TProtocol> where TProtocol : struct
+/// <typeparam name="TProtocol">协议类型</typeparam>
+/// <typeparam name="TData">数据载荷类型</typeparam>
+public interface IFrameBuilder<TProtocol, TData>
+    where TProtocol : struct
 {
     /// <summary>
     /// 协议模式
@@ -14,55 +16,47 @@ public interface IFrameBuilder<TProtocol> where TProtocol : struct
     IProtocolSchema<TProtocol> Schema { get; }
 
     /// <summary>
-    /// 协议编解码器
+    /// 编解码器
     /// </summary>
-    IProtocolCodec<TProtocol> Codec { get; }
-
-    #region 写入帧构建
+    IProtocolCodec<TProtocol, TData> Codec { get; }
 
     /// <summary>
     /// 构建写入整个协议的帧
     /// </summary>
-    ModbusWriteFrame BuildWriteFrame(TProtocol protocol);
+    IWriteFrame<TData> BuildWriteFrame(TProtocol protocol);
 
     /// <summary>
     /// 构建写入单个字段的帧
     /// </summary>
-    ModbusWriteFrame BuildWriteFrame<TValue>(
+    IWriteFrame<TData> BuildWriteFrame<TValue>(
         Expression<Func<TProtocol, TValue>> fieldSelector,
         TValue value) where TValue : unmanaged;
 
     /// <summary>
     /// 构建写入指定地址的帧
     /// </summary>
-    ModbusWriteFrame BuildWriteFrame<TValue>(
+    IWriteFrame<TData> BuildWriteFrame<TValue>(
         ushort address,
         TValue value) where TValue : unmanaged;
-
-    #endregion
-
-    #region 读取请求构建
 
     /// <summary>
     /// 构建读取整个协议的请求
     /// </summary>
-    ModbusReadRequest BuildReadRequest();
+    IReadRequest BuildReadRequest();
 
     /// <summary>
     /// 构建读取单个字段的请求
     /// </summary>
-    ModbusReadRequest BuildReadRequest<TValue>(
+    IReadRequest BuildReadRequest<TValue>(
         Expression<Func<TProtocol, TValue>> fieldSelector) where TValue : unmanaged;
 
     /// <summary>
-    /// 构建读取指定地址和长度的请求
+    /// 构建读取指定地址和数量的请求
     /// </summary>
-    ModbusReadRequest BuildReadRequest(ushort startAddress, ushort registerCount);
-
-    #endregion
+    IReadRequest BuildReadRequest(ushort startAddress, ushort count);
 
     /// <summary>
-    /// 创建批量写入构建器
+    /// 创建数据映射（批量写入构建器）
     /// </summary>
-    IBatchFrameBuilder<TProtocol> CreateBatchBuilder();
+    IDataMapping<TProtocol, TData> CreateDataMapping();
 }
