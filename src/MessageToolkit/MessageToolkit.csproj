@@ -5,10 +5,19 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>1.1.9</Version>
+    <Version>2.0.0</Version>
     <Authors>Lejoy</Authors>
-    <Description>增加协议配置接口获取成员地址方法</Description>
-    <PackageReleaseNotes>增加对应的异步方法</PackageReleaseNotes>
+    <Description>
+      Modbus 协议帧构建工具库。
+      支持协议序列化、帧构建，不依赖任何通信库。
+    </Description>
+    <PackageReleaseNotes>
+      v2.0.0 - 重大重构
+      - 移除 ModbusClient 依赖
+      - 专注于协议帧构建
+      - 新增 ModbusFrame 模型
+      - 支持批量帧构建和地址合并优化
+    </PackageReleaseNotes>
     <PackageOutputPath>D:\Code\NuGet\ModbusMessageToolkit</PackageOutputPath>
     <PackageIcon>modbusMessageToolkit.png</PackageIcon>
     <PackageReadmeFile>readme.md</PackageReadmeFile>
@@ -26,7 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ProjectLibrary.Communication" Version="1.5.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
   </ItemGroup>
 
 </Project>
