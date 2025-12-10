@@ -42,10 +42,7 @@ public sealed class WriteFrameCollection : IEnumerable<ModbusWriteFrame>, IDispo
         if (_disposed) return;
         _disposed = true;
 
-        foreach (var frame in _frames)
-        {
-            frame.Dispose();
-        }
+        // ModbusWriteFrame 是值类型，不需要 Dispose
         _frames.Clear();
     }
 }

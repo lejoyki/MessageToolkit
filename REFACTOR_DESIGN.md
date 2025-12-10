@@ -846,16 +846,16 @@ using MessageToolkit.Attributes;
 public struct DeviceProtocol
 {
     [Address(100)]
-    public int Speed;
+    public int Speed { get; set; }
     
     [Address(104)]
-    public float Temperature;
+    public float Temperature { get; set; }
     
     [Address(108)]
-    public bool IsRunning;
+    public bool IsRunning { get; set; }
     
     [Address(110)]
-    public short Status;
+    public short Status { get; set; }
 }
 ```
 

@@ -24,7 +24,7 @@ public sealed class ProtocolTests
     {
         Assert.Equal(100, _schema.StartAddress);
         Assert.Equal(12, _schema.TotalSize);
-        Assert.Equal(4, _schema.Fields.Count);
+        Assert.Equal(4, _schema.Properties.Count);
 
         var boolField = _schema.GetFieldInfo(nameof(DemoProtocol.IsRunning));
         Assert.Equal(2, boolField.Size);
@@ -54,6 +54,23 @@ public sealed class ProtocolTests
         Assert.Equal(protocol.Temperature, decoded.Temperature);
         Assert.Equal(protocol.IsRunning, decoded.IsRunning);
         Assert.Equal(protocol.Status, decoded.Status);
+    }
+
+    [Fact]
+    public void Codec_Should_Extract_Boolean_Values()
+    {
+        var protocol = new DemoProtocol
+        {
+            Speed = 1,
+            Temperature = 2.0f,
+            IsRunning = true,
+            Status = 3
+        };
+
+        var map = _codec.ExtractBooleanValues(protocol);
+        Assert.Single(map);
+        Assert.True(map.ContainsKey(108));
+        Assert.True(map[108]);
     }
 
     [Fact]
@@ -104,7 +121,7 @@ public sealed class ProtocolTests
             .Write(p => p.Speed, 10)
             .Write(p => p.Temperature, 20.5f)
             .Write(p => p.IsRunning, true)
-            .Write(p => p.Status, 2)
+            .Write(p => p.Status, (short)2)  // 显式转换为 short 以确保类型正确
             .BuildOptimized();
 
         Assert.Single(frames);
@@ -165,9 +182,9 @@ public sealed class ProtocolTests
 
     private struct DemoProtocol
     {
-        [Address(100)] public int Speed;
-        [Address(104)] public float Temperature;
-        [Address(108)] public bool IsRunning;
-        [Address(110)] public short Status;
+        [Address(100)] public int Speed { get; set; }
+        [Address(104)] public float Temperature { get; set; }
+        [Address(108)] public bool IsRunning { get; set; }
+        [Address(110)] public short Status { get; set; }
     }
 }

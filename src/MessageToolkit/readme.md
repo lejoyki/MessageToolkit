@@ -22,10 +22,10 @@ using MessageToolkit.Attributes;
 
 public struct DeviceProtocol
 {
-    [Address(100)] public int Speed;
-    [Address(104)] public float Temperature;
-    [Address(108)] public bool IsRunning;
-    [Address(110)] public short Status;
+    [Address(100)] public int Speed { get; set; }
+    [Address(104)] public float Temperature { get; set; }
+    [Address(108)] public bool IsRunning { get; set; }
+    [Address(110)] public short Status { get; set; }
 }
 ```
 
@@ -86,6 +86,7 @@ var decoded = builder.Codec.Decode(raw);
 - 布尔表示可选 `Int16`/`Int32`，与大小端配置配合
 - 仅输出帧数据，实际通信由上层自行发送/接收
 - `FrameCollection.Optimize()` 支持连续地址合并，减少帧数
+- 仅解析带 `AddressAttribute` 的公共属性（不支持字段成员）
 
 ## 开发与测试
 ```bash

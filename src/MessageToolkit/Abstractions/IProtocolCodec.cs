@@ -36,5 +36,10 @@ public interface IProtocolCodec<TProtocol> where TProtocol : struct
     /// 获取字段的序列化字节
     /// </summary>
     byte[] EncodeField<TValue>(TProtocol protocol, Expression<Func<TProtocol, TValue>> fieldSelector);
+
+    /// <summary>
+    /// 提取协议实例中布尔属性的地址和值映射（ByteAddress -> bool）
+    /// </summary>
+    Dictionary<int, bool> ExtractBooleanValues(TProtocol protocol);
 }
 

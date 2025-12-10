@@ -6,12 +6,12 @@ namespace MessageToolkit.Models;
 public sealed class ProtocolFieldInfo
 {
     /// <summary>
-    /// 字段名称
+    /// 属性名称
     /// </summary>
     public required string Name { get; init; }
 
     /// <summary>
-    /// 字段类型
+    /// 属性类型
     /// </summary>
     public required Type FieldType { get; init; }
 

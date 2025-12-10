@@ -39,14 +39,15 @@ public interface IProtocolSchema<TProtocol> where TProtocol : struct
     Endianness Endianness { get; }
 
     /// <summary>
-    /// 所有字段信息
+    /// 所有属性信息
     /// </summary>
-    IReadOnlyDictionary<string, ProtocolFieldInfo> Fields { get; }
+    IReadOnlyDictionary<string, ProtocolFieldInfo> Properties { get; }
 
     /// <summary>
-    /// 布尔字段信息（仅包含类型为 bool 的字段/属性）
+    /// 布尔属性地址映射（仅包含类型为 bool 的字段/属性）
+    /// 键为属性名，值为字节地址
     /// </summary>
-    IReadOnlyDictionary<string, ProtocolFieldInfo> BooleanFields { get; }
+    IReadOnlyDictionary<string, ushort> BooleanProperties { get; }
 
     /// <summary>
     /// 根据字段名获取地址
