@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Linq.Expressions;
 using MessageToolkit.Abstractions;
 using MessageToolkit.Models;
@@ -12,75 +11,143 @@ internal sealed class BatchFrameBuilder<TProtocol> : IBatchFrameBuilder<TProtoco
     where TProtocol : struct
 {
     private readonly IFrameBuilder<TProtocol> _frameBuilder;
-    private readonly List<(ushort Address, byte[] Data)> _pendingWrites = [];
+    private readonly List<WriteEntry> _pendingWrites;
+
+    // 预分配容量，避免频繁扩容
+    private const int DefaultCapacity = 16;
+
+    public int Count => _pendingWrites.Count;
 
     public BatchFrameBuilder(IFrameBuilder<TProtocol> frameBuilder)
     {
         _frameBuilder = frameBuilder;
+        _pendingWrites = new List<WriteEntry>(DefaultCapacity);
     }
 
-    public IBatchFrameBuilder<TProtocol> Write<TValue>(Expression<Func<TProtocol, TValue>> fieldSelector, TValue value) where TValue : unmanaged
+    public IBatchFrameBuilder<TProtocol> Write<TValue>(
+        Expression<Func<TProtocol, TValue>> fieldSelector,
+        TValue value) where TValue : unmanaged
     {
         var address = _frameBuilder.Schema.GetAddress(fieldSelector);
         var data = _frameBuilder.Codec.EncodeValue(value);
-        _pendingWrites.Add((address, data));
+        _pendingWrites.Add(new WriteEntry(address, data));
         return this;
     }
 
     public IBatchFrameBuilder<TProtocol> Write<TValue>(ushort address, TValue value) where TValue : unmanaged
     {
         var data = _frameBuilder.Codec.EncodeValue(value);
-        _pendingWrites.Add((address, data));
+        _pendingWrites.Add(new WriteEntry(address, data));
         return this;
     }
 
-    public FrameCollection Build()
+    public IBatchFrameBuilder<TProtocol> WriteRaw(ushort address, ReadOnlySpan<byte> data)
     {
-        var collection = new FrameCollection();
-        foreach (var (address, data) in _pendingWrites)
+        _pendingWrites.Add(new WriteEntry(address, data.ToArray()));
+        return this;
+    }
+
+    public WriteFrameCollection Build()
+    {
+        var collection = new WriteFrameCollection();
+
+        foreach (var entry in _pendingWrites)
         {
-            collection.Add(new ModbusFrame
-            {
-                FunctionCode = ModbusFunctionCode.WriteMultipleRegisters,
-                StartAddress = address,
-                Data = data
-            });
+            collection.Add(new ModbusWriteFrame(
+                ModbusFunctionCode.WriteMultipleRegisters,
+                entry.Address,
+                entry.Data));
         }
 
         return collection;
     }
 
-    public FrameCollection BuildOptimized()
+    public WriteFrameCollection BuildOptimized()
     {
-        var ordered = _pendingWrites.OrderBy(x => x.Address).ToList();
-        var collection = new FrameCollection();
-
-        var index = 0;
-        while (index < ordered.Count)
+        if (_pendingWrites.Count == 0)
         {
-            var (startAddr, startData) = ordered[index];
-            var combinedData = new List<byte>(startData);
-            var nextStart = startAddr + startData.Length;
-            var nextIndex = index + 1;
+            return new WriteFrameCollection();
+        }
 
-            while (nextIndex < ordered.Count && ordered[nextIndex].Address == nextStart)
+        // 使用 Span 排序避免分配
+        var entries = _pendingWrites.ToArray();
+        Array.Sort(entries, static (a, b) => a.Address.CompareTo(b.Address));
+
+        var collection = new WriteFrameCollection();
+        var index = 0;
+
+        while (index < entries.Length)
+        {
+            var startEntry = entries[index];
+            var startAddr = startEntry.Address;
+
+            // 计算需要合并的数据总长度
+            var totalLength = startEntry.Data.Length;
+            var endAddr = startAddr + startEntry.Data.Length;
+            var mergeCount = 1;
+
+            // 查找可以合并的连续条目
+            for (var i = index + 1; i < entries.Length; i++)
             {
-                combinedData.AddRange(ordered[nextIndex].Data);
-                nextStart = (ushort)(ordered[nextIndex].Address + ordered[nextIndex].Data.Length);
-                nextIndex++;
+                var nextEntry = entries[i];
+                if (nextEntry.Address != endAddr)
+                    break;
+
+                totalLength += nextEntry.Data.Length;
+                endAddr = nextEntry.Address + nextEntry.Data.Length;
+                mergeCount++;
             }
 
-            collection.Add(new ModbusFrame
+            // 如果只有一个条目，直接使用原数据
+            if (mergeCount == 1)
             {
-                FunctionCode = ModbusFunctionCode.WriteMultipleRegisters,
-                StartAddress = startAddr,
-                Data = combinedData.ToArray()
-            });
+                collection.Add(new ModbusWriteFrame(
+                    ModbusFunctionCode.WriteMultipleRegisters,
+                    startAddr,
+                    startEntry.Data));
+            }
+            else
+            {
+                // 合并多个条目的数据
+                var mergedData = new byte[totalLength];
+                var offset = 0;
 
-            index = nextIndex;
+                for (var i = index; i < index + mergeCount; i++)
+                {
+                    var data = entries[i].Data;
+                    data.CopyTo(mergedData, offset);
+                    offset += data.Length;
+                }
+
+                collection.Add(new ModbusWriteFrame(
+                    ModbusFunctionCode.WriteMultipleRegisters,
+                    startAddr,
+                    mergedData));
+            }
+
+            index += mergeCount;
         }
 
         return collection;
     }
-}
 
+    public void Clear()
+    {
+        _pendingWrites.Clear();
+    }
+
+    /// <summary>
+    /// 写入条目 - 使用 readonly struct 减少内存分配
+    /// </summary>
+    private readonly struct WriteEntry
+    {
+        public readonly ushort Address;
+        public readonly byte[] Data;
+
+        public WriteEntry(ushort address, byte[] data)
+        {
+            Address = address;
+            Data = data;
+        }
+    }
+}

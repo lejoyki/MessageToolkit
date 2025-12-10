@@ -1,14 +1,14 @@
 using System.Collections;
-using System.Linq;
 
 namespace MessageToolkit.Models;
 
 /// <summary>
-/// 帧集合，支持连续地址合并
+/// 写入帧集合，支持连续地址合并
 /// </summary>
-public sealed class FrameCollection : IEnumerable<ModbusFrame>
+public sealed class WriteFrameCollection : IEnumerable<ModbusWriteFrame>, IDisposable
 {
-    private readonly List<ModbusFrame> _frames = [];
+    private readonly List<ModbusWriteFrame> _frames = [];
+    private bool _disposed;
 
     /// <summary>
     /// 帧数量
@@ -18,57 +18,34 @@ public sealed class FrameCollection : IEnumerable<ModbusFrame>
     /// <summary>
     /// 添加帧
     /// </summary>
-    public void Add(ModbusFrame frame) => _frames.Add(frame);
-
-    /// <summary>
-    /// 合并连续地址的帧
-    /// </summary>
-    public FrameCollection Optimize()
+    public void Add(ModbusWriteFrame frame)
     {
-        var ordered = _frames.OrderBy(f => f.StartAddress).ToList();
-        var optimized = new FrameCollection();
-
-        var index = 0;
-        while (index < ordered.Count)
-        {
-            var current = ordered[index];
-            var mergedData = new List<byte>(current.Data);
-            var currentFunction = current.FunctionCode;
-            var expectedNextStart = current.StartAddress + current.Data.Length;
-
-            var nextIndex = index + 1;
-            while (nextIndex < ordered.Count)
-            {
-                var next = ordered[nextIndex];
-                if (next.FunctionCode != currentFunction || next.StartAddress != expectedNextStart)
-                {
-                    break;
-                }
-
-                mergedData.AddRange(next.Data);
-                expectedNextStart = (ushort)(next.StartAddress + next.Data.Length);
-                nextIndex++;
-            }
-
-            optimized.Add(new ModbusFrame
-            {
-                FunctionCode = currentFunction,
-                StartAddress = current.StartAddress,
-                Data = mergedData.ToArray()
-            });
-
-            index = nextIndex;
-        }
-
-        return optimized;
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _frames.Add(frame);
     }
 
     /// <summary>
     /// 获取所有帧
     /// </summary>
-    public IReadOnlyList<ModbusFrame> Frames => _frames.AsReadOnly();
+    public IReadOnlyList<ModbusWriteFrame> Frames => _frames;
 
-    public IEnumerator<ModbusFrame> GetEnumerator() => _frames.GetEnumerator();
+    /// <summary>
+    /// 索引器
+    /// </summary>
+    public ModbusWriteFrame this[int index] => _frames[index];
+
+    public IEnumerator<ModbusWriteFrame> GetEnumerator() => _frames.GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-}
 
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        foreach (var frame in _frames)
+        {
+            frame.Dispose();
+        }
+        _frames.Clear();
+    }
+}

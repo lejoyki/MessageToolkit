@@ -1,9 +1,12 @@
-
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+# Visual Studio Version 18
+VisualStudioVersion = 18.3.11304.161 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MessageToolkit", "src\MessageToolkit\MessageToolkit.csproj", "{E6858F68-3761-4585-9B81-4366FB0ED1E4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MobusTest", "sample\MobusTest\MobusTest.csproj", "{61F6DBEC-2D35-FCE8-A567-934282DABB79}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MessageToolkit.Tests", "tests\MessageToolkit.Tests\MessageToolkit.Tests.csproj", "{C7147CDF-AFB0-E102-491E-5FED8C154D96}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +18,14 @@ Global
 		{E6858F68-3761-4585-9B81-4366FB0ED1E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E6858F68-3761-4585-9B81-4366FB0ED1E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E6858F68-3761-4585-9B81-4366FB0ED1E4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{61F6DBEC-2D35-FCE8-A567-934282DABB79}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{61F6DBEC-2D35-FCE8-A567-934282DABB79}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{61F6DBEC-2D35-FCE8-A567-934282DABB79}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{61F6DBEC-2D35-FCE8-A567-934282DABB79}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C7147CDF-AFB0-E102-491E-5FED8C154D96}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C7147CDF-AFB0-E102-491E-5FED8C154D96}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C7147CDF-AFB0-E102-491E-5FED8C154D96}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C7147CDF-AFB0-E102-491E-5FED8C154D96}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

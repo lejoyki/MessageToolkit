@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Runtime.InteropServices;
 using MessageToolkit.Abstractions;
 using MessageToolkit.Models;
 
@@ -24,52 +25,65 @@ public sealed class ModbusFrameBuilder<TProtocol> : IFrameBuilder<TProtocol>
         Codec = codec ?? throw new ArgumentNullException(nameof(codec));
     }
 
-    public ModbusFrame BuildWriteFrame(TProtocol protocol)
+    #region 写入帧构建
+
+    public ModbusWriteFrame BuildWriteFrame(TProtocol protocol)
     {
-        return new ModbusFrame
-        {
-            FunctionCode = ModbusFunctionCode.WriteMultipleRegisters,
-            StartAddress = (ushort)Schema.StartAddress,
-            Data = Codec.Encode(protocol)
-        };
+        return new ModbusWriteFrame(
+            ModbusFunctionCode.WriteMultipleRegisters,
+            (ushort)Schema.StartAddress,
+            Codec.Encode(protocol));
     }
 
-    public ModbusFrame BuildWriteFrame<TValue>(Expression<Func<TProtocol, TValue>> fieldSelector, TValue value) where TValue : unmanaged
+    public ModbusWriteFrame BuildWriteFrame<TValue>(
+        Expression<Func<TProtocol, TValue>> fieldSelector,
+        TValue value) where TValue : unmanaged
     {
         var address = Schema.GetAddress(fieldSelector);
         return BuildWriteFrame(address, value);
     }
 
-    public ModbusFrame BuildWriteFrame<TValue>(ushort address, TValue value) where TValue : unmanaged
+    public ModbusWriteFrame BuildWriteFrame<TValue>(ushort address, TValue value) where TValue : unmanaged
     {
-        return new ModbusFrame
-        {
-            FunctionCode = ModbusFunctionCode.WriteMultipleRegisters,
-            StartAddress = address,
-            Data = Codec.EncodeValue(value)
-        };
+        return new ModbusWriteFrame(
+            ModbusFunctionCode.WriteMultipleRegisters,
+            address,
+            Codec.EncodeValue(value));
     }
 
-    public ModbusFrame BuildReadFrame()
+    #endregion
+
+    #region 读取请求构建
+
+    public ModbusReadRequest BuildReadRequest()
     {
-        return new ModbusFrame
-        {
-            FunctionCode = ModbusFunctionCode.ReadHoldingRegisters,
-            StartAddress = (ushort)Schema.StartAddress,
-            Data = Array.Empty<byte>() // 读取帧不需要数据
-        };
+        return new ModbusReadRequest(
+            ModbusFunctionCode.ReadHoldingRegisters,
+            (ushort)Schema.StartAddress,
+            (ushort)Schema.RegisterCount);
     }
 
-    public ModbusFrame BuildReadFrame<TValue>(Expression<Func<TProtocol, TValue>> fieldSelector) where TValue : unmanaged
+    public ModbusReadRequest BuildReadRequest<TValue>(
+        Expression<Func<TProtocol, TValue>> fieldSelector) where TValue : unmanaged
     {
         var fieldInfo = Schema.GetFieldInfo(GetMemberName(fieldSelector));
-        return new ModbusFrame
-        {
-            FunctionCode = ModbusFunctionCode.ReadHoldingRegisters,
-            StartAddress = fieldInfo.ByteAddress,
-            Data = new byte[fieldInfo.Size]
-        };
+        var registerCount = (ushort)((fieldInfo.Size + 1) / 2); // 向上取整
+
+        return new ModbusReadRequest(
+            ModbusFunctionCode.ReadHoldingRegisters,
+            fieldInfo.ByteAddress,
+            registerCount);
     }
+
+    public ModbusReadRequest BuildReadRequest(ushort startAddress, ushort registerCount)
+    {
+        return new ModbusReadRequest(
+            ModbusFunctionCode.ReadHoldingRegisters,
+            startAddress,
+            registerCount);
+    }
+
+    #endregion
 
     public IBatchFrameBuilder<TProtocol> CreateBatchBuilder()
     {
@@ -78,17 +92,11 @@ public sealed class ModbusFrameBuilder<TProtocol> : IFrameBuilder<TProtocol>
 
     private static string GetMemberName<TValue>(Expression<Func<TProtocol, TValue>> expression)
     {
-        if (expression.Body is MemberExpression memberExpression)
+        return expression.Body switch
         {
-            return memberExpression.Member.Name;
-        }
-
-        if (expression.Body is UnaryExpression { Operand: MemberExpression unaryMember })
-        {
-            return unaryMember.Member.Name;
-        }
-
-        throw new ArgumentException("无效的字段访问表达式", nameof(expression));
+            MemberExpression memberExpression => memberExpression.Member.Name,
+            UnaryExpression { Operand: MemberExpression unaryMember } => unaryMember.Member.Name,
+            _ => throw new ArgumentException("无效的字段访问表达式", nameof(expression))
+        };
     }
 }
-
