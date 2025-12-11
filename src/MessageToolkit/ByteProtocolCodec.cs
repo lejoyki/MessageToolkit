@@ -11,14 +11,14 @@ namespace MessageToolkit;
 /// <summary>
 /// Modbus 协议编解码器 - 用于字节数据的编解码
 /// </summary>
-public sealed class ProtocolCodec<TProtocol> : IProtocolCodec<TProtocol, byte>
+public sealed class ByteProtocolCodec<TProtocol> : IProtocolCodec<TProtocol, byte>
     where TProtocol : struct
 {
     public IProtocolSchema<TProtocol> Schema { get; }
     private readonly Dictionary<string, PropertyInfo> _propertyMap;
     private readonly (ProtocolFieldInfo Info, PropertyInfo Property)[] _orderedProperties;
 
-    public ProtocolCodec(IProtocolSchema<TProtocol> schema)
+    public ByteProtocolCodec(IProtocolSchema<TProtocol> schema)
     {
         Schema = schema ?? throw new ArgumentNullException(nameof(schema));
 

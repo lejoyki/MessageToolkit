@@ -7,19 +7,21 @@ namespace MessageToolkit;
 /// <summary>
 /// Modbus 数据映射 - 用于批量构建字节帧
 /// </summary>
-internal sealed class ModbusBatchFrameBuilder<TProtocol> : IDataMapping<TProtocol, byte>
+public sealed class ModbusDataMapping<TProtocol> : IDataMapping<TProtocol, byte>
     where TProtocol : struct
 {
-    private readonly IFrameBuilder<TProtocol, byte> _frameBuilder;
+    private readonly IProtocolSchema<TProtocol> _schema;
+    private readonly ByteProtocolCodec<TProtocol> _codec;
     private readonly List<WriteEntry> _pendingWrites;
 
     private const int DefaultCapacity = 16;
 
     public int Count => _pendingWrites.Count;
 
-    public ModbusBatchFrameBuilder(IFrameBuilder<TProtocol, byte> frameBuilder)
+    public ModbusDataMapping(IProtocolSchema<TProtocol> schema, ByteProtocolCodec<TProtocol> codec)
     {
-        _frameBuilder = frameBuilder;
+        _schema = schema ?? throw new ArgumentNullException(nameof(schema));
+        _codec = codec ?? throw new ArgumentNullException(nameof(codec));
         _pendingWrites = new List<WriteEntry>(DefaultCapacity);
     }
 
@@ -28,36 +30,30 @@ internal sealed class ModbusBatchFrameBuilder<TProtocol> : IDataMapping<TProtoco
         _pendingWrites.Add(new WriteEntry((ushort)address, [data]));
     }
 
+    /// <summary>
+    /// 添加字段写入（链式调用）
+    /// </summary>
     public IDataMapping<TProtocol, byte> Property<TValue>(
         Expression<Func<TProtocol, TValue>> fieldSelector,
         TValue value) where TValue : unmanaged
     {
-        var address = _frameBuilder.Schema.GetAddress(fieldSelector);
-        var data = _frameBuilder.Codec.EncodeValue(value);
+        var address = _schema.GetAddress(fieldSelector);
+        var data = _codec.EncodeValue(value);
         _pendingWrites.Add(new WriteEntry(address, data));
         return this;
     }
 
+    /// <summary>
+    /// 添加地址写入（链式调用）
+    /// </summary>
     public IDataMapping<TProtocol, byte> Property<TValue>(ushort address, TValue value) where TValue : unmanaged
     {
-        var data = _frameBuilder.Codec.EncodeValue(value);
+        var data = _codec.EncodeValue(value);
         _pendingWrites.Add(new WriteEntry(address, data));
         return this;
     }
 
-    public IValueSetter<TProtocol, byte> Property<TValue>(
-        Expression<Func<TProtocol, TValue>> propertyExpression)
-    {
-        var address = _frameBuilder.Schema.GetAddress(propertyExpression);
-        return new ByteValueSetter<TProtocol>(this, (ushort)address, _frameBuilder.Codec);
-    }
-
-    public IValueSetter<TProtocol, byte> Property(int address)
-    {
-        return new ByteValueSetter<TProtocol>(this, (ushort)address, _frameBuilder.Codec);
-    }
-
-    public IEnumerable<IWriteFrame<byte>> Build()
+    public IEnumerable<IFrame<byte>> Build()
     {
         foreach (var entry in _pendingWrites)
         {
@@ -65,7 +61,7 @@ internal sealed class ModbusBatchFrameBuilder<TProtocol> : IDataMapping<TProtoco
         }
     }
 
-    public IEnumerable<IWriteFrame<byte>> BuildOptimized()
+    public IEnumerable<IFrame<byte>> BuildOptimized()
     {
         if (_pendingWrites.Count == 0)
         {
@@ -128,31 +124,5 @@ internal sealed class ModbusBatchFrameBuilder<TProtocol> : IDataMapping<TProtoco
     {
         public ushort Address { get; } = address;
         public byte[] Data { get; } = data;
-    }
-}
-
-/// <summary>
-/// 字节值设置器 - 用于 Fluent API
-/// </summary>
-internal sealed class ByteValueSetter<TProtocol>(
-    IDataMapping<TProtocol, byte> mapping,
-    ushort address,
-    IProtocolCodec<TProtocol, byte> codec) : IValueSetter<TProtocol, byte>
-    where TProtocol : struct
-{
-    public IDataMapping<TProtocol, byte> Value(byte value)
-    {
-        mapping.AddData(address, value);
-        return mapping;
-    }
-
-    public IDataMapping<TProtocol, byte> Value<TValue>(TValue value) where TValue : unmanaged
-    {
-        var data = codec.EncodeValue(value);
-        foreach (var b in data)
-        {
-            mapping.AddData(address, b);
-        }
-        return mapping;
     }
 }

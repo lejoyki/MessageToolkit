@@ -14,19 +14,9 @@ public interface IProtocolSchema<TProtocol> where TProtocol : struct
     int StartAddress { get; }
 
     /// <summary>
-    /// 协议起始寄存器地址（StartAddress / 2）
-    /// </summary>
-    int StartRegisterAddress => StartAddress / 2;
-
-    /// <summary>
     /// 协议总大小（元素数量）
     /// </summary>
     int TotalSize { get; }
-
-    /// <summary>
-    /// 寄存器数量（TotalSize / 2）
-    /// </summary>
-    int RegisterCount => TotalSize / 2;
 
     /// <summary>
     /// 布尔类型在协议中的表示方式
@@ -42,12 +32,6 @@ public interface IProtocolSchema<TProtocol> where TProtocol : struct
     /// 所有属性信息
     /// </summary>
     IReadOnlyDictionary<string, ProtocolFieldInfo> Properties { get; }
-
-    /// <summary>
-    /// 布尔属性地址映射（仅包含类型为 bool 的字段/属性）
-    /// 键为属性名，值为地址
-    /// </summary>
-    IReadOnlyDictionary<string, ushort> BooleanProperties { get; }
 
     /// <summary>
     /// 根据字段名获取地址

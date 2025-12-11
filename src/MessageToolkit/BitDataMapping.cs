@@ -7,66 +7,36 @@ namespace MessageToolkit;
 /// <summary>
 /// 位数据映射实现 - 用于 IO 点位的链式写入
 /// </summary>
-public sealed class BitDataMapping<TProtocol> : IDataMapping<TProtocol, bool>
+public sealed class BitDataMapping<TProtocol>(IProtocolSchema<TProtocol> schema) : IDataMapping<TProtocol,bool>
     where TProtocol : struct
 {
-    private readonly IProtocolSchema<TProtocol> _schema;
-    private readonly Dictionary<int, bool> _data = new();
+    private readonly IProtocolSchema<TProtocol> _schema = schema ?? throw new ArgumentNullException(nameof(schema));
+    private readonly Dictionary<int, bool> _data = [];
 
     public int Count => _data.Count;
 
-    public BitDataMapping(IProtocolSchema<TProtocol> schema)
+    public IDataMapping<TProtocol,bool> Property<TValue>(Expression<Func<TProtocol, TValue>> fieldSelector, TValue value) where TValue : unmanaged
     {
-        _schema = schema ?? throw new ArgumentNullException(nameof(schema));
-    }
-
-    public void AddData(int address, bool data)
-    {
-        _data[address] = data;
-    }
-
-    public IDataMapping<TProtocol, bool> Property<TValue>(
-        Expression<Func<TProtocol, TValue>> fieldSelector,
-        TValue value) where TValue : unmanaged
-    {
-        var address = _schema.GetAddress(fieldSelector);
-        if (value is bool b)
+        ushort address = _schema.GetAddress(fieldSelector);
+        if(value is not bool boolValue)
         {
-            _data[address] = b;
+            throw new ArgumentException("Only boolean values are supported for bit data mapping.");
         }
-        else
-        {
-            throw new NotSupportedException($"BitDataMapping 仅支持 bool 类型值");
-        }
+        _data[address] = boolValue;
         return this;
     }
 
-    public IDataMapping<TProtocol, bool> Property<TValue>(ushort address, TValue value) where TValue : unmanaged
+    public IDataMapping<TProtocol,bool> Property<TValue>(ushort address, TValue value) where TValue : unmanaged
     {
-        if (value is bool b)
+        if(value is not bool boolValue)
         {
-            _data[address] = b;
+            throw new ArgumentException("Only boolean values are supported for bit data mapping.");
         }
-        else
-        {
-            throw new NotSupportedException($"BitDataMapping 仅支持 bool 类型值");
-        }
+        _data[address] = boolValue;
         return this;
     }
 
-    public IValueSetter<TProtocol, bool> Property<TValue>(
-        Expression<Func<TProtocol, TValue>> propertyExpression)
-    {
-        var address = _schema.GetAddress(propertyExpression);
-        return new BitValueSetter<TProtocol>(this, address);
-    }
-
-    public IValueSetter<TProtocol, bool> Property(int address)
-    {
-        return new BitValueSetter<TProtocol>(this, address);
-    }
-
-    public IEnumerable<IWriteFrame<bool>> Build()
+    public IEnumerable<IFrame<bool>> Build()
     {
         foreach (var kvp in _data)
         {
@@ -74,7 +44,7 @@ public sealed class BitDataMapping<TProtocol> : IDataMapping<TProtocol, bool>
         }
     }
 
-    public IEnumerable<IWriteFrame<bool>> BuildOptimized()
+    public IEnumerable<IFrame<bool>> BuildOptimized()
     {
         if (_data.Count == 0)
         {
@@ -112,37 +82,5 @@ public sealed class BitDataMapping<TProtocol> : IDataMapping<TProtocol, bool>
     public void Clear()
     {
         _data.Clear();
-    }
-}
-
-/// <summary>
-/// 位值设置器实现
-/// </summary>
-internal sealed class BitValueSetter<TProtocol> : IValueSetter<TProtocol, bool>
-    where TProtocol : struct
-{
-    private readonly IDataMapping<TProtocol, bool> _mapping;
-    private readonly int _address;
-
-    public BitValueSetter(IDataMapping<TProtocol, bool> mapping, int address)
-    {
-        _mapping = mapping;
-        _address = address;
-    }
-
-    public IDataMapping<TProtocol, bool> Value(bool value)
-    {
-        _mapping.AddData(_address, value);
-        return _mapping;
-    }
-
-    public IDataMapping<TProtocol, bool> Value<TValue>(TValue value) where TValue : unmanaged
-    {
-        if (value is bool b)
-        {
-            _mapping.AddData(_address, b);
-            return _mapping;
-        }
-        throw new NotSupportedException($"BitValueSetter 仅支持 bool 类型值");
     }
 }

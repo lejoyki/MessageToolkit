@@ -9,11 +9,6 @@ public interface IFrame
     /// 起始地址
     /// </summary>
     int StartAddress { get; }
-
-    /// <summary>
-    /// 数据长度（元素数量）
-    /// </summary>
-    int DataLength { get; }
 }
 
 /// <summary>
@@ -31,4 +26,9 @@ public interface IFrame<TData> : IFrame
     /// 获取数据副本
     /// </summary>
     TData[] ToArray();
+
+    /// <summary>
+    /// 数据长度
+    /// </summary>
+    int DataLength { get; }
 }

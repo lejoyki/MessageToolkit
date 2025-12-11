@@ -24,8 +24,15 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IProtocolSchema<TProtocol>>(
             _ => new ProtocolSchema<TProtocol>(booleanType, endianness));
-        services.AddTransient<IProtocolCodec<TProtocol, byte>, ProtocolCodec<TProtocol>>();
-        services.AddTransient<IFrameBuilder<TProtocol, byte>, ModbusFrameBuilder<TProtocol>>();
+        
+        // 注册具体类型，以便用户可以使用完整功能
+        services.AddTransient<ByteProtocolCodec<TProtocol>>();
+        services.AddTransient<ModbusFrameBuilder<TProtocol>>();
+        
+        // 注册接口映射
+        services.AddTransient<IProtocolCodec<TProtocol, byte>>(sp => sp.GetRequiredService<ByteProtocolCodec<TProtocol>>());
+        services.AddTransient<IFrameBuilder<TProtocol, byte>>(sp => sp.GetRequiredService<ModbusFrameBuilder<TProtocol>>());
+        
         return services;
     }
 
@@ -39,8 +46,15 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IProtocolSchema<TProtocol>>(
             _ => new ProtocolSchema<TProtocol>(booleanType, endianness));
-        services.AddTransient<IProtocolCodec<TProtocol, bool>, BitProtocolCodec<TProtocol>>();
-        services.AddTransient<IFrameBuilder<TProtocol, bool>, BitFrameBuilder<TProtocol>>();
+        
+        // 注册具体类型，以便用户可以使用完整功能
+        services.AddTransient<BitProtocolCodec<TProtocol>>();
+        services.AddTransient<BitFrameBuilder<TProtocol>>();
+        
+        // 注册接口映射
+        services.AddTransient<IProtocolCodec<TProtocol, bool>>(sp => sp.GetRequiredService<BitProtocolCodec<TProtocol>>());
+        services.AddTransient<IFrameBuilder<TProtocol, bool>>(sp => sp.GetRequiredService<BitFrameBuilder<TProtocol>>());
+        
         return services;
     }
 }

@@ -6,7 +6,7 @@ namespace MessageToolkit.Models;
 /// <summary>
 /// Modbus 写入帧 - 字节数据帧实现
 /// </summary>
-public readonly struct ModbusWriteFrame : IWriteFrame<byte>
+public readonly struct ModbusWriteFrame : IFrame<byte>
 {
     /// <summary>
     /// 起始地址
@@ -65,7 +65,7 @@ public readonly struct ModbusWriteFrame : IWriteFrame<byte>
 /// <summary>
 /// Modbus 读取请求 - 只包含地址和数量信息
 /// </summary>
-public readonly struct ModbusReadRequest : IReadRequest
+public readonly struct ModbusReadRequest : IReadFrame
 {
     /// <summary>
     /// 起始地址
@@ -93,11 +93,6 @@ public readonly struct ModbusReadRequest : IReadRequest
     public int Count => RegisterCount * 2;
 
     /// <summary>
-    /// 数据长度（请求不携带数据）
-    /// </summary>
-    public int DataLength => 0;
-
-    /// <summary>
     /// 要读取的字节数
     /// </summary>
     public int ByteCount => RegisterCount * 2;
@@ -110,16 +105,4 @@ public readonly struct ModbusReadRequest : IReadRequest
         StartAddress = startAddress;
         RegisterCount = registerCount;
     }
-
-    /// <summary>
-    /// 创建读取保持寄存器请求
-    /// </summary>
-    public static ModbusReadRequest ReadHoldingRegisters(ushort startAddress, ushort registerCount)
-        => new(startAddress, registerCount);
-
-    /// <summary>
-    /// 创建读取输入寄存器请求
-    /// </summary>
-    public static ModbusReadRequest ReadInputRegisters(ushort startAddress, ushort registerCount)
-        => new(startAddress, registerCount);
 }

@@ -12,28 +12,34 @@ public sealed class ModbusFrameBuilder<TProtocol> : IFrameBuilder<TProtocol, byt
 {
     public IProtocolSchema<TProtocol> Schema { get; }
     public IProtocolCodec<TProtocol, byte> Codec { get; }
+    
+    private readonly ByteProtocolCodec<TProtocol> _modbusCodec;
 
     public ModbusFrameBuilder(IProtocolSchema<TProtocol> schema)
-        : this(schema, new ProtocolCodec<TProtocol>(schema))
+        : this(schema, new ByteProtocolCodec<TProtocol>(schema))
     {
     }
 
-    public ModbusFrameBuilder(IProtocolSchema<TProtocol> schema, IProtocolCodec<TProtocol, byte> codec)
+    public ModbusFrameBuilder(IProtocolSchema<TProtocol> schema, ByteProtocolCodec<TProtocol> codec)
     {
         Schema = schema ?? throw new ArgumentNullException(nameof(schema));
-        Codec = codec ?? throw new ArgumentNullException(nameof(codec));
+        _modbusCodec = codec ?? throw new ArgumentNullException(nameof(codec));
+        Codec = codec;
     }
 
     #region 写入帧构建
 
-    public IWriteFrame<byte> BuildWriteFrame(TProtocol protocol)
+    public IFrame<byte> BuildWriteFrame(TProtocol protocol)
     {
         return new ModbusWriteFrame(
             (ushort)Schema.StartAddress,
             Codec.Encode(protocol));
     }
 
-    public IWriteFrame<byte> BuildWriteFrame<TValue>(
+    /// <summary>
+    /// 构建单个字段的写入帧
+    /// </summary>
+    public ModbusWriteFrame BuildWriteFrame<TValue>(
         Expression<Func<TProtocol, TValue>> fieldSelector,
         TValue value) where TValue : unmanaged
     {
@@ -41,25 +47,29 @@ public sealed class ModbusFrameBuilder<TProtocol> : IFrameBuilder<TProtocol, byt
         return BuildWriteFrame(address, value);
     }
 
-    public IWriteFrame<byte> BuildWriteFrame<TValue>(ushort address, TValue value) where TValue : unmanaged
+    /// <summary>
+    /// 构建指定地址的写入帧
+    /// </summary>
+    public ModbusWriteFrame BuildWriteFrame<TValue>(ushort address, TValue value) where TValue : unmanaged
     {
-        return new ModbusWriteFrame(
-            address,
-            Codec.EncodeValue(value));
+        return new ModbusWriteFrame(address, _modbusCodec.EncodeValue(value));
     }
 
     #endregion
 
     #region 读取请求构建
 
-    public IReadRequest BuildReadRequest()
+    public IReadFrame BuildReadRequest()
     {
         return new ModbusReadRequest(
             (ushort)Schema.StartAddress,
-            (ushort)Schema.RegisterCount);
+            (ushort)Schema.TotalSize);
     }
 
-    public IReadRequest BuildReadRequest<TValue>(
+    /// <summary>
+    /// 构建单个字段的读取请求
+    /// </summary>
+    public ModbusReadRequest BuildReadRequest<TValue>(
         Expression<Func<TProtocol, TValue>> fieldSelector) where TValue : unmanaged
     {
         var fieldInfo = Schema.GetFieldInfo(GetMemberName(fieldSelector));
@@ -70,7 +80,7 @@ public sealed class ModbusFrameBuilder<TProtocol> : IFrameBuilder<TProtocol, byt
             registerCount);
     }
 
-    public IReadRequest BuildReadRequest(ushort startAddress, ushort count)
+    public IReadFrame BuildReadRequest(ushort startAddress, ushort count)
     {
         return new ModbusReadRequest(startAddress, count);
     }
@@ -79,7 +89,7 @@ public sealed class ModbusFrameBuilder<TProtocol> : IFrameBuilder<TProtocol, byt
 
     public IDataMapping<TProtocol, byte> CreateDataMapping()
     {
-        return new ModbusBatchFrameBuilder<TProtocol>(this);
+        return new ModbusDataMapping<TProtocol>(Schema, _modbusCodec);
     }
 
     private static string GetMemberName<TValue>(Expression<Func<TProtocol, TValue>> expression)

@@ -8,7 +8,7 @@ namespace MessageToolkit;
 /// 位协议编解码器 - 用于 bool 字段的协议
 /// </summary>
 /// <typeparam name="TProtocol">协议类型（仅包含 bool 属性）</typeparam>
-public sealed class BitProtocolCodec<TProtocol> : IProtocolCodec<TProtocol, bool>
+public sealed class BitProtocolCodec<TProtocol, TData> : IProtocolCodec<TProtocol, TData>
     where TProtocol : struct
 {
     public IProtocolSchema<TProtocol> Schema { get; }
@@ -20,19 +20,19 @@ public sealed class BitProtocolCodec<TProtocol> : IProtocolCodec<TProtocol, bool
         Schema = schema ?? throw new ArgumentNullException(nameof(schema));
 
         // 缓存布尔属性信息
-        _booleanProperties = Schema.BooleanProperties
-            .Select(kvp => (kvp.Key, kvp.Value, typeof(TProtocol).GetProperty(kvp.Key)!))
+        _booleanProperties = Schema.Properties
+            .Where(kvp => kvp.Value.FieldType == typeof(TData))
+            .Select(kvp => (kvp.Key, kvp.Value.Address, typeof(TProtocol).GetProperty(kvp.Key)!))
             .ToArray();
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool[] Encode(TProtocol protocol)
+    public  TData[] Encode(TProtocol protocol)
     {
-        var buffer = new bool[Schema.TotalSize];
+        var buffer = new TData[Schema.TotalSize];
 
         foreach (var (_, address, property) in _booleanProperties)
         {
-            if (property.GetValue(protocol) is bool value)
+            if (property.GetValue(protocol) is TData value)
             {
                 var offset = address - Schema.StartAddress;
                 if (offset >= 0 && offset < buffer.Length)
@@ -45,8 +45,7 @@ public sealed class BitProtocolCodec<TProtocol> : IProtocolCodec<TProtocol, bool
         return buffer;
     }
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public TProtocol Decode(ReadOnlySpan<bool> data)
+    public TProtocol Decode(ReadOnlySpan<TData> data)
     {
         var result = new TProtocol();
         object boxed = result;
@@ -61,27 +60,5 @@ public sealed class BitProtocolCodec<TProtocol> : IProtocolCodec<TProtocol, bool
         }
 
         return (TProtocol)boxed;
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool[] EncodeValue<TValue>(TValue value) where TValue : unmanaged
-    {
-        if (value is bool b)
-        {
-            return [b];
-        }
-
-        throw new NotSupportedException($"BitProtocolCodec 仅支持 bool 类型，不支持 {typeof(TValue).Name}");
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public TValue DecodeValue<TValue>(ReadOnlySpan<bool> data) where TValue : unmanaged
-    {
-        if (typeof(TValue) == typeof(bool) && data.Length > 0)
-        {
-            return (TValue)(object)data[0];
-        }
-
-        throw new NotSupportedException($"BitProtocolCodec 仅支持 bool 类型，不支持 {typeof(TValue).Name}");
     }
 }

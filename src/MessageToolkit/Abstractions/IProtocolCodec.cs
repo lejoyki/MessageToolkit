@@ -1,7 +1,7 @@
 namespace MessageToolkit.Abstractions;
 
 /// <summary>
-/// 泛型协议编解码器接口
+/// 协议编解码器接口 - 负责协议与数据数组之间的转换
 /// </summary>
 /// <typeparam name="TProtocol">协议类型</typeparam>
 /// <typeparam name="TData">数据载荷类型</typeparam>
@@ -22,14 +22,4 @@ public interface IProtocolCodec<TProtocol, TData>
     /// 从数据数组反序列化协议
     /// </summary>
     TProtocol Decode(ReadOnlySpan<TData> data);
-
-    /// <summary>
-    /// 序列化单个值
-    /// </summary>
-    TData[] EncodeValue<TValue>(TValue value) where TValue : unmanaged;
-
-    /// <summary>
-    /// 反序列化单个值
-    /// </summary>
-    TValue DecodeValue<TValue>(ReadOnlySpan<TData> data) where TValue : unmanaged;
 }

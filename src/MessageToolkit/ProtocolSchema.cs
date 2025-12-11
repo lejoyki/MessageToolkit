@@ -19,7 +19,6 @@ public sealed class ProtocolSchema<TProtocol> : IProtocolSchema<TProtocol>
     public BooleanRepresentation BooleanType { get; }
     public Endianness Endianness { get; }
     public IReadOnlyDictionary<string, ProtocolFieldInfo> Properties { get; }
-    public IReadOnlyDictionary<string, ushort> BooleanProperties { get; }
 
     public ProtocolSchema(
         BooleanRepresentation booleanType = BooleanRepresentation.Int16,
@@ -29,7 +28,6 @@ public sealed class ProtocolSchema<TProtocol> : IProtocolSchema<TProtocol>
         Endianness = endianness;
         var mapping = BuildFieldMapping();
         Properties = mapping.Fields;
-        BooleanProperties = mapping.BooleanFields;
 
         if (Properties.Count == 0)
         {
@@ -66,13 +64,9 @@ public sealed class ProtocolSchema<TProtocol> : IProtocolSchema<TProtocol>
         throw new ArgumentException($"找不到字段 {fieldName} 的定义");
     }
 
-    private (IReadOnlyDictionary<string, ProtocolFieldInfo> Fields,
-        IReadOnlyDictionary<string, ushort> BooleanFields,
-        int StartAddress,
-        int TotalSize) BuildFieldMapping()
+    private (IReadOnlyDictionary<string, ProtocolFieldInfo> Fields,int StartAddress,int TotalSize) BuildFieldMapping()
     {
         var mapping = new Dictionary<string, ProtocolFieldInfo>(StringComparer.Ordinal);
-        var booleanMapping = new Dictionary<string, ushort>(StringComparer.Ordinal);
         var startAddress = int.MaxValue;
         var maxEndAddress = 0;
 
@@ -99,10 +93,6 @@ public sealed class ProtocolSchema<TProtocol> : IProtocolSchema<TProtocol>
 
             mapping[propertyInfo.Name] = fieldInfo;
 
-            if (fieldType == typeof(bool))
-            {
-                booleanMapping[propertyInfo.Name] = address;
-            }
 
             startAddress = Math.Min(startAddress, address);
             maxEndAddress = Math.Max(maxEndAddress, address + size);
@@ -114,9 +104,7 @@ public sealed class ProtocolSchema<TProtocol> : IProtocolSchema<TProtocol>
         }
 
         var totalSize = Math.Max(0, maxEndAddress - startAddress);
-        return (
-            mapping.ToFrozenDictionary(),
-            booleanMapping.ToFrozenDictionary(),
+        return (mapping.ToFrozenDictionary(),
             startAddress,
             totalSize);
     }
@@ -125,7 +113,7 @@ public sealed class ProtocolSchema<TProtocol> : IProtocolSchema<TProtocol>
     {
         if (type == typeof(bool))
         {
-            return BooleanType == BooleanRepresentation.Int32 ? 4 : 2;
+            return (int)BooleanType;
         }
 
         if (type.IsEnum)

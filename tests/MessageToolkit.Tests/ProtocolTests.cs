@@ -9,8 +9,8 @@ namespace MessageToolkit.Tests;
 public sealed class ProtocolTests
 {
     private readonly IProtocolSchema<DemoProtocol> _schema;
-    private readonly IProtocolCodec<DemoProtocol, byte> _codec;
-    private readonly IFrameBuilder<DemoProtocol, byte> _builder;
+    private readonly ProtocolCodec<DemoProtocol> _codec;
+    private readonly ModbusFrameBuilder<DemoProtocol> _builder;
 
     public ProtocolTests()
     {
@@ -67,9 +67,7 @@ public sealed class ProtocolTests
             Status = 3
         };
 
-        // ExtractBooleanValues is a concrete class helper, cast to access it
-        var concreteCodec = (ProtocolCodec<DemoProtocol>)_codec;
-        var map = concreteCodec.ExtractBooleanValues(protocol);
+        var map = _codec.ExtractBooleanValues(protocol);
         Assert.Single(map);
         Assert.True(map.ContainsKey(108));
         Assert.True(map[108]);
@@ -102,18 +100,16 @@ public sealed class ProtocolTests
     public void FrameBuilder_Should_Build_ReadRequest_For_Field()
     {
         var readField = _builder.BuildReadRequest(p => p.Temperature);
-        var modbusRequest = (ModbusReadRequest)readField;
 
-        Assert.Equal((ushort)104, modbusRequest.StartAddress);
-        Assert.Equal((ushort)2, modbusRequest.RegisterCount); // float = 4 bytes = 2 registers
-        Assert.Equal(4, modbusRequest.ByteCount);
+        Assert.Equal((ushort)104, readField.StartAddress);
+        Assert.Equal((ushort)2, readField.RegisterCount); // float = 4 bytes = 2 registers
+        Assert.Equal(4, readField.ByteCount);
     }
 
     [Fact]
     public void FrameBuilder_Should_Build_WriteFrame_For_Field()
     {
-        var writeFrame = _builder.BuildWriteFrame(p => p.Speed, 1500);
-        var modbusFrame = (ModbusWriteFrame)writeFrame;
+        var modbusFrame = _builder.BuildWriteFrame(p => p.Speed, 1500);
 
         Assert.Equal((ushort)100, modbusFrame.StartAddress);
         Assert.Equal(4, modbusFrame.DataLength); // int = 4 bytes
@@ -123,11 +119,12 @@ public sealed class ProtocolTests
     [Fact]
     public void BatchBuilder_Should_Combine_Contiguous_Addresses()
     {
-        var frames = _builder.CreateDataMapping()
-            .Write(p => p.Speed, 10)
-            .Write(p => p.Temperature, 20.5f)
-            .Write(p => p.IsRunning, true)
-            .Write(p => p.Status, (short)2)  // 显式转换为 short 以确保类型正确
+        var mapping = (ModbusBatchFrameBuilder<DemoProtocol>)_builder.CreateDataMapping();
+        var frames = mapping
+            .Property(p => p.Speed, 10)
+            .Property(p => p.Temperature, 20.5f)
+            .Property(p => p.IsRunning, true)
+            .Property(p => p.Status, (short)2)
             .BuildOptimized()
             .ToArray();
 
@@ -140,9 +137,10 @@ public sealed class ProtocolTests
     [Fact]
     public void BatchBuilder_Should_Not_Combine_NonContiguous_Addresses()
     {
-        var frames = _builder.CreateDataMapping()
-            .Write(p => p.Speed, 10)          // 地址 100, 4 bytes
-            .Write(p => p.IsRunning, true)    // 地址 108, 2 bytes (跳过 Temperature)
+        var mapping = (ModbusBatchFrameBuilder<DemoProtocol>)_builder.CreateDataMapping();
+        var frames = mapping
+            .Property(p => p.Speed, 10)          // 地址 100, 4 bytes
+            .Property(p => p.IsRunning, true)    // 地址 108, 2 bytes (跳过 Temperature)
             .BuildOptimized()
             .ToArray();
 
@@ -154,14 +152,14 @@ public sealed class ProtocolTests
     [Fact]
     public void BatchBuilder_Clear_Should_Reset()
     {
-        var builder = _builder.CreateDataMapping();
-        builder.Write(p => p.Speed, 10);
-        Assert.Equal(1, builder.Count);
+        var mapping = (ModbusBatchFrameBuilder<DemoProtocol>)_builder.CreateDataMapping();
+        mapping.Property(p => p.Speed, 10);
+        Assert.Equal(1, mapping.Count);
 
-        builder.Clear();
-        Assert.Equal(0, builder.Count);
+        mapping.Clear();
+        Assert.Equal(0, mapping.Count);
 
-        var frames = builder.Build().ToArray();
+        var frames = mapping.Build().ToArray();
         Assert.Empty(frames);
     }
 
