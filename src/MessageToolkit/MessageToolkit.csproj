@@ -7,7 +7,7 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <PackageId>MessageToolkit</PackageId>
     <Title>MessageToolkit</Title>
-    <Version>3.0.0</Version>
+    <Version>3.0.1</Version>
     <Authors>Lejoy</Authors>
     <Description>
       协议帧构建工具库，支持 Modbus 字节协议和原生类型协议。

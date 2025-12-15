@@ -33,7 +33,7 @@ public sealed class NativeFrameBuilder<TProtocol, TData> : INativeFrameBuilder<T
     /// <summary>
     /// 创建原生协议帧构建器
     /// </summary>
-    public NativeFrameBuilder(IProtocolSchema<TProtocol> schema, NativeProtocolCodec<TProtocol, TData> codec)
+    public NativeFrameBuilder(IProtocolSchema<TProtocol> schema, INativeProtocolCodec<TProtocol, TData> codec)
     {
         Schema = schema ?? throw new ArgumentNullException(nameof(schema));
         Codec = codec ?? throw new ArgumentNullException(nameof(codec));

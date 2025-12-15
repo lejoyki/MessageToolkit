@@ -16,7 +16,7 @@ public readonly struct WriteFrame<TData> : IFrame<TData>
     /// <summary>
     /// 数据载荷
     /// </summary>
-    public ReadOnlyMemory<TData> Data { get; }
+    public TData[] Data { get; }
 
     /// <summary>
     /// 数据长度
@@ -35,17 +35,6 @@ public readonly struct WriteFrame<TData> : IFrame<TData>
     }
 
     /// <summary>
-    /// 创建写入帧（Memory 数据）
-    /// </summary>
-    /// <param name="startAddress">起始地址</param>
-    /// <param name="data">数据</param>
-    public WriteFrame(int startAddress, ReadOnlyMemory<TData> data)
-    {
-        StartAddress = startAddress;
-        Data = data;
-    }
-
-    /// <summary>
     /// 创建单值写入帧
     /// </summary>
     /// <param name="address">地址</param>
@@ -53,11 +42,6 @@ public readonly struct WriteFrame<TData> : IFrame<TData>
     public WriteFrame(int address, TData value)
     {
         StartAddress = address;
-        Data = new[] { value };
+        Data = [value];
     }
-
-    /// <summary>
-    /// 获取数据的副本
-    /// </summary>
-    public TData[] ToArray() => Data.ToArray();
 }

@@ -79,6 +79,27 @@ public sealed class NativeProtocolCodec<TProtocol, TData> : INativeProtocolCodec
         return (TProtocol)boxed;
     }
 
+    // <summary>
+    /// 提取协议中所有布尔字段的值
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Dictionary<int, bool> ExtractBooleanValues(TProtocol protocol)
+    {
+        var result = new Dictionary<int, bool>();
+        foreach (var (_, address, property) in _mappedProperties)
+        {
+            if (property.PropertyType == typeof(bool))
+            {
+                var value = property.GetValue(protocol);
+                if (value is bool b)
+                {
+                    result[address] = b;
+                }
+            }
+        }
+        return result;
+    }
+
     /// <summary>
     /// 获取映射的属性数量
     /// </summary>

@@ -10,7 +10,7 @@ namespace MessageToolkit;
 public sealed class ModbusFrameBuilder<TProtocol> : IModbusFrameBuilder<TProtocol>
     where TProtocol : struct
 {
-    private readonly ModbusProtocolCodec<TProtocol> _codec;
+    private readonly IModbusProtocolCodec<TProtocol> _codec;
 
     /// <summary>
     /// 协议模式
@@ -36,7 +36,7 @@ public sealed class ModbusFrameBuilder<TProtocol> : IModbusFrameBuilder<TProtoco
     /// </summary>
     /// <param name="schema">协议模式</param>
     /// <param name="codec">字节编解码器</param>
-    public ModbusFrameBuilder(IProtocolSchema<TProtocol> schema, ModbusProtocolCodec<TProtocol> codec)
+    public ModbusFrameBuilder(IProtocolSchema<TProtocol> schema, IModbusProtocolCodec<TProtocol> codec)
     {
         Schema = schema ?? throw new ArgumentNullException(nameof(schema));
         _codec = codec ?? throw new ArgumentNullException(nameof(codec));

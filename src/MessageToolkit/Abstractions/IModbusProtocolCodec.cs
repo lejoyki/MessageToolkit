@@ -38,4 +38,9 @@ public interface IModbusProtocolCodec<TProtocol>
     /// 编码协议中的指定字段
     /// </summary>
     byte[] EncodeField<TValue>(TProtocol protocol, Expression<Func<TProtocol, TValue>> fieldSelector);
+
+    /// <summary>
+    /// 提取协议中所有布尔字段的值
+    /// </summary>
+    Dictionary<int, bool> ExtractBooleanValues(TProtocol protocol);
 }

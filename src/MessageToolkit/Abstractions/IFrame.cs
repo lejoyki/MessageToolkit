@@ -20,12 +20,7 @@ public interface IFrame<TData> : IFrame
     /// <summary>
     /// 数据载荷
     /// </summary>
-    ReadOnlyMemory<TData> Data { get; }
-
-    /// <summary>
-    /// 获取数据副本
-    /// </summary>
-    TData[] ToArray();
+    TData[] Data { get; }
 
     /// <summary>
     /// 数据长度

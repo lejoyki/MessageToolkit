@@ -8,12 +8,12 @@ namespace MessageToolkit;
 /// <summary>
 /// Modbus 数据映射 - 用于字节协议的批量写入构建
 /// </summary>
-public sealed class ModbusDataMapping<TProtocol> : IModbusDataMapping<TProtocol>
+public class ModbusDataMapping<TProtocol> : IModbusDataMapping<TProtocol>
     where TProtocol : struct
 {
-    private readonly IProtocolSchema<TProtocol> _schema;
-    private readonly ModbusProtocolCodec<TProtocol> _codec;
-    private readonly List<WriteEntry> _pendingWrites;
+    protected readonly IProtocolSchema<TProtocol> _schema;
+    protected readonly IModbusProtocolCodec<TProtocol> _codec;
+    protected readonly List<WriteEntry> _pendingWrites;
 
     /// <summary>
     /// 已添加的数据项数量
@@ -25,7 +25,7 @@ public sealed class ModbusDataMapping<TProtocol> : IModbusDataMapping<TProtocol>
     /// </summary>
     /// <param name="schema">协议模式</param>
     /// <param name="codec">字节编解码器</param>
-    public ModbusDataMapping(IProtocolSchema<TProtocol> schema, ModbusProtocolCodec<TProtocol> codec)
+    public ModbusDataMapping(IProtocolSchema<TProtocol> schema, IModbusProtocolCodec<TProtocol> codec)
     {
         _schema = schema ?? throw new ArgumentNullException(nameof(schema));
         _codec = codec ?? throw new ArgumentNullException(nameof(codec));
@@ -140,7 +140,7 @@ public sealed class ModbusDataMapping<TProtocol> : IModbusDataMapping<TProtocol>
         _pendingWrites.Clear();
     }
 
-    private readonly struct WriteEntry(ushort address, byte[] data)
+    protected readonly struct WriteEntry(ushort address, byte[] data)
     {
         public ushort Address { get; } = address;
         public byte[] Data { get; } = data;

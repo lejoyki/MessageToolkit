@@ -24,6 +24,11 @@ public interface INativeProtocolCodec<TProtocol, TData>
     TProtocol Decode(ReadOnlySpan<TData> data);
 
     /// <summary>
+    /// 提取协议中所有布尔字段的值
+    /// </summary>
+    Dictionary<int, bool> ExtractBooleanValues(TProtocol protocol);
+
+    /// <summary>
     /// 映射的属性数量
     /// </summary>
     int MappedPropertyCount { get; }

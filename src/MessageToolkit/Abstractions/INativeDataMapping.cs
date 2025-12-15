@@ -28,7 +28,7 @@ public interface INativeDataMapping<TProtocol, TData>
 
     PropertyValueSetter<TProtocol, TData> Property(ushort address);
 
-    PropertyValueSetter<TProtocol, TData> Property(Expression<Func<TProtocol, TData>> fieldSelector, TData value);
+    PropertyValueSetter<TProtocol, TData> Property(Expression<Func<TProtocol, TData>> fieldSelector);
 
     /// <summary>
     /// 构建帧集合（每个写入操作生成独立帧）

@@ -26,7 +26,7 @@ public readonly struct ModbusWriteFrame : IFrame<byte>
     /// <summary>
     /// 数据载荷
     /// </summary>
-    public ReadOnlyMemory<byte> Data { get; }
+    public byte[] Data { get; }
 
     /// <summary>
     /// 数据长度（字节）
@@ -46,20 +46,6 @@ public readonly struct ModbusWriteFrame : IFrame<byte>
         StartAddress = startAddress;
         Data = data;
     }
-
-    /// <summary>
-    /// 创建写入帧
-    /// </summary>
-    public ModbusWriteFrame(ushort startAddress, ReadOnlyMemory<byte> data)
-    {
-        StartAddress = startAddress;
-        Data = data;
-    }
-
-    /// <summary>
-    /// 获取数据的副本
-    /// </summary>
-    public byte[] ToArray() => Data.ToArray();
 }
 
 /// <summary>

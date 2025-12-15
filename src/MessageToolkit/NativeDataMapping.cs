@@ -9,11 +9,11 @@ namespace MessageToolkit;
 /// </summary>
 /// <typeparam name="TProtocol">协议结构体类型</typeparam>
 /// <typeparam name="TData">原生数据类型</typeparam>
-public sealed class NativeDataMapping<TProtocol, TData> : INativeDataMapping<TProtocol, TData>
+public class NativeDataMapping<TProtocol, TData> : INativeDataMapping<TProtocol, TData>
     where TProtocol : struct
 {
-    private readonly IProtocolSchema<TProtocol> _schema;
-    private readonly Dictionary<int, TData> _data;
+    protected readonly IProtocolSchema<TProtocol> _schema;
+    protected readonly Dictionary<int, TData> _data;
 
     /// <summary>
     /// 已添加的数据项数量
@@ -54,7 +54,7 @@ public sealed class NativeDataMapping<TProtocol, TData> : INativeDataMapping<TPr
         return new PropertyValueSetter<TProtocol, TData>(this, address);
     }
 
-    public PropertyValueSetter<TProtocol, TData> Property(Expression<Func<TProtocol, TData>> fieldSelector, TData value)
+    public PropertyValueSetter<TProtocol, TData> Property(Expression<Func<TProtocol, TData>> fieldSelector)
     {
         var address = _schema.GetAddress(fieldSelector);
         return new PropertyValueSetter<TProtocol, TData>(this, address);
